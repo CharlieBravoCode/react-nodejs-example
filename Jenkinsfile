@@ -2,41 +2,36 @@ def gv
 
 libary = library identifier: 'jenkins-shared-library@master', retriever: modernSCM(
     [$class: 'GitSCMSource',
-    remote: '
+    remote: 'git@github.com:CharlieBravoCode/react-nodejs-example.git',
+    credentialsId: 'GitHub',
+    ]
+)
 
 pipeline {
     agent any
+    environment {
+        IMAGE_NAME = 'charliebravocode/react-nodejs-example'
+    }
     stages {
-        stage("init") {
+        stage('build docker image') {
             steps {
                 script {
-                    gv = load "script.groovy"
+                    echo "building docker image..."
+                    buildImage(env.IMAGE_NAME)
+                    dockerLogin()
+                    dockerPush(env.IMAGE_NAME)
                 }
             }
         }
-        stage("build jar") {
+        stage('deploy') {
             steps {
                 script {
-                    echo "building jar"
-                    //gv.buildJar()
-                }
-            }
-        }
-        stage("build image") {
-            steps {
-                script {
-                    echo "building image"
-                    //gv.buildImage()
-                }
-            }
-        }
-        stage("deploy") {
-            steps {
-                script {
-                    def dockerCmd = 'docker run -p 3080:3080 -d charliebravocode react-nodejs-example:latest'
+                    echo "deploying docker image to EC2"
+                    def dockerCmd = 'docker run -p 3080:3080 -d ${IMAGE_NAME}'
                     sshagent(['ec2-server-key']) {
                         sh "ssh -o StrictHostKeyChecking=no ec2-user@3.72.15.155 ${dockerCmd}"
                     }
+
                 }
             }
         }
